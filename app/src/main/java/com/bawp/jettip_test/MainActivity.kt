@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApp {
                 TipCalculator()
+                //testing
             }
 
         }
