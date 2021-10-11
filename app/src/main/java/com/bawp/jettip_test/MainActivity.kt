@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -29,9 +30,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bawp.bmi_copy.ui.widgets.RoundIconButton
 import com.bawp.jettip_test.components.InputField
+import com.bawp.jettip_test.data.TipViewModel
 import com.bawp.jettip_test.ui.theme.JetTipTestTheme
 import com.bawp.jettip_test.util.calculateTotalPerPerson
 import com.bawp.jettip_test.util.calculateTotalTip
+import androidx.lifecycle.ViewModel
 
 @ExperimentalComposeUiApi
 class MainActivity : ComponentActivity() {
@@ -55,6 +58,7 @@ fun MyApp( content: @Composable () -> Unit){
         // A surface container using the 'background' color from the theme
         Surface(color = MaterialTheme.colors.background) {
             content()
+            //ScreenDemo(model = TipViewModel())
         }
     }
 }
@@ -255,6 +259,28 @@ fun BillForm(
 
 }
 
+
+@Composable
+fun ScreenDemo(model: TipViewModel ) {
+    Demo("This is ${model.showCounter()}") {
+        model.increaseCounter() }
+
+
+}
+
+@Composable
+fun Demo(text: String, onclick: () -> Unit = {}) {
+    Column {
+        BasicText(text)
+        Button(
+            onClick = onclick,
+              ) {
+            BasicText(text = "Add 1")
+        }
+    }
+}
+
+
 @Composable
 private fun TipSlider(
     modifier: Modifier = Modifier,
@@ -283,7 +309,7 @@ private fun TipSlider(
                     totalBill = totalBillState.value.toDouble(),
                     tipPercent = tipPercentage
                                                        )
-                Log.d("AMT", "TipSlider: ${tipPercentage}")
+               // Log.d("AMT", "TipSlider: $tipPercentage")
 
 //                totalTipState.value = calculateTotalTip(tota
 //                    tipPercent = tipPercentage).roundToInt().toString()
@@ -291,14 +317,7 @@ private fun TipSlider(
               steps = 5,
             valueRange = (0f..100f))
 
-
     }
-
-
-
-
-
-
 
 }
 
