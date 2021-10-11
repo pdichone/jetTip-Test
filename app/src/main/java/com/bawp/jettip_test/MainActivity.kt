@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Money
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -21,16 +21,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.bawp.bmi_copy.ui.widgets.RoundIconButton
 import com.bawp.jettip_test.components.InputField
 import com.bawp.jettip_test.ui.theme.JetTipTestTheme
+import com.bawp.jettip_test.util.calculateTotalPerPerson
+import com.bawp.jettip_test.util.calculateTotalTip
 import kotlin.math.roundToInt
-import kotlin.math.roundToLong
 
 @ExperimentalComposeUiApi
 class MainActivity : ComponentActivity() {
@@ -39,9 +41,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApp {
                 TipCalculator()
-                //testing
             }
-
         }
     }
 }
@@ -58,23 +58,17 @@ fun MyApp( content: @Composable () -> Unit){
             content()
         }
     }
-
-
 }
 @ExperimentalComposeUiApi
 @Composable
 fun TipCalculator() {
     Surface(modifier = Modifier
         .padding(12.dp)) {
-
         Column() {
-
             MainContent()
         }
     }
-
 }
-
 
 @Preview
 @Composable
@@ -107,40 +101,38 @@ fun TopHeader(totalPerPers: Double = 0.0) {
 @Preview
 @Composable
 fun MainContent() {
-    BillForm{ billAmt ->
-        Log.d("Bill", "MainContent: $billAmt")
-    }
+    BillForm()
 }
 
-fun calculateTotalTip(totalBill: Double, tipPercent: Int): Double {
 
-    return if (totalBill > 1 && totalBill.toString().isNotEmpty()) (totalBill * tipPercent) / 100 else 0.0
-}
-fun calculateTotalPerPerson(totalBill: Double, splitBy: Int, tipPercent: Int): Double {
-    val bill = calculateTotalTip(totalBill, tipPercent = tipPercent) + totalBill
-    return (bill/splitBy)
-}
 @ExperimentalComposeUiApi
 @Composable
 fun BillForm(modifier: Modifier = Modifier,
-             onValChange: (String) -> Unit
+             range: IntRange = 1..100,
+             onValChange: (String) -> Unit = {}
             ) {
 
     val splitBy = remember {
         mutableStateOf(1)
     }
 
+//    val sliderPosition: MutableState<Float> = remember {
+//        mutableStateOf(0f)
+//    }
     var sliderPosition by remember {
         mutableStateOf(0f)
     }
     val totalTipAmt = remember {
         mutableStateOf(0.0)
     }
+//    val totalTipAmt: MutableState<Double> = remember {
+//        mutableStateOf(0.0)
+//    }
     val totalPerPerson = remember {
         mutableStateOf(0.0)
     }
 
-    val tipPercentage = (sliderPosition * 100).roundToInt()
+    val tipPercentage = (sliderPosition * 100).toInt()
     val totalBill = rememberSaveable{ mutableStateOf("") } //or just remember {}
     val keyboardController = LocalSoftwareKeyboardController.current
     val valid = remember(totalBill.value) {
@@ -151,8 +143,7 @@ fun BillForm(modifier: Modifier = Modifier,
 
     Surface(modifier = Modifier
         .padding(2.dp)
-        .fillMaxWidth()
-        .height(260.dp),
+        .fillMaxWidth(),
         shape = CircleShape.copy(all = CornerSize(8.dp)),
         border = BorderStroke(width = 1.dp, color = Color.LightGray)) {
 
@@ -161,139 +152,143 @@ fun BillForm(modifier: Modifier = Modifier,
             horizontalAlignment = Alignment.Start) {
 
             InputField(
-                valueState = totalBill, labelId = "Enter Bill" ,
-                enabled = true, onAction = KeyboardActions {
+                valueState = totalBill, labelId = "Enter Bill",
+                enabled = true,
+                onAction = KeyboardActions {
                     //The submit button is disabled unless the inputs are valid. wrap this in if statement to accomplish the same.
                     if (!valid) return@KeyboardActions
                     onValChange(totalBill.value.trim())
                     //totalBill.value = ""
                     keyboardController?.hide() //(to use this we need to use @ExperimentalComposeUiApi
-                }, )
-            Row(modifier = Modifier.padding(3.dp),
-               horizontalArrangement = Arrangement.Start) {
-                Text(text = "Split", modifier = Modifier
-                    .align(alignment = Alignment.CenterVertically))
+                },
+                      )
 
-                Spacer(modifier = Modifier.width(120.dp))
+            if (valid) {
+                Row(modifier = Modifier.padding(3.dp), horizontalArrangement = Arrangement.Start) {
+                    Text(text = "Split",
+                        modifier = Modifier.align(alignment = Alignment.CenterVertically))
+                    Spacer(modifier = Modifier.width(120.dp))
 
-                Row(modifier = Modifier.padding(horizontal = 3.dp),
+                    Row(modifier = Modifier.padding(horizontal = 3.dp),
+                        horizontalArrangement = Arrangement.End) {
+
+                        RoundIconButton(imageVector = Icons.Default.Remove, onClick = {
+                            splitBy.value = if (splitBy.value > 1) splitBy.value - 1 else 1
+                            totalPerPerson.value =
+                                calculateTotalPerPerson(totalBill = totalBill.value.toDouble(),
+                                    splitBy = splitBy.value,
+                                    tipPercent = tipPercentage)
+                        })
+
+                        Text(text = "${splitBy.value}",
+                            Modifier.align(alignment = Alignment.CenterVertically)
+                                .padding(start = 9.dp, end = 9.dp))
+                        RoundIconButton(imageVector = Icons.Default.Add, onClick = {
+                            if (splitBy.value < range.last) {
+                                splitBy.value = splitBy.value + 1
+
+                                totalPerPerson.value =
+                                    calculateTotalPerPerson(totalBill = totalBill.value.toDouble(),
+                                        splitBy = splitBy.value,
+                                        tipPercent = tipPercentage)
+                            }
+                        })
+
+                    }
+                }
+                //Tip Row
+                Row(modifier = Modifier.padding(horizontal = 3.dp).padding(vertical = 12.dp),
                     horizontalArrangement = Arrangement.End) {
-                    CustomButton(signLabel = "-"){
-                        splitBy.value = if (splitBy.value > 1) splitBy.value - 1 else  1
-                        totalPerPerson.value = calculateTotalPerPerson(
-                            totalBill = totalBill.value.toDouble(),
-                            splitBy = splitBy.value,
-                            tipPercent = tipPercentage)
-                       // Log.d("TAG", "BillForm-Minus: ${splitCounter.value}")
-                    }
-                    Text(text = "${splitBy.value}",
-                        Modifier
-                            .align(alignment = Alignment.CenterVertically)
-                            .padding(start = 9.dp, end = 9.dp))
-                    CustomButton(count = splitBy.value, signLabel = "+"){ newVal ->
-                        splitBy.value = newVal
-                        totalPerPerson.value = calculateTotalPerPerson(
-                            totalBill = totalBill.value.toDouble(),
-                            splitBy = splitBy.value,
-                            tipPercent = tipPercentage)
-                        Log.d("TAG", "BillForm: ${splitBy.value}")
-                    }
+                    Text(text = "Tip",
+                        modifier = Modifier.align(alignment = Alignment.CenterVertically))
+
+                    Spacer(modifier = Modifier.width(200.dp))
+
+                    Text(text = "$${totalTipAmt.value}",
+                        modifier = Modifier.align(alignment = Alignment.CenterVertically))
 
                 }
-            }
-            //Tip Row
-            Row(modifier = Modifier
-                .padding(horizontal = 3.dp)
-                .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.End) {
-                Text(text = "Tip", modifier = Modifier
-                    .align(alignment = Alignment.CenterVertically))
+                Column(verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally) {
 
-                Spacer(modifier = Modifier.width(200.dp))
+                    Text(text = "$tipPercentage %")
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Slider(value = sliderPosition,
+                        onValueChange = { newVal ->
+                            sliderPosition = newVal
+                            totalTipAmt.value =
+                                calculateTotalTip(totalBill = totalBill.value.toDouble(),
+                                    tipPercent = tipPercentage)
 
-                Text(text = "$${totalTipAmt.value}", modifier = Modifier
-                    .align(alignment = Alignment.CenterVertically))
+                            totalPerPerson.value =
+                                calculateTotalPerPerson(totalBill = totalBill.value.toDouble(),
+                                    splitBy = splitBy.value,
+                                    tipPercent = tipPercentage)
+                            Log.d("Slider", "Total Bill-->: ${"%.2f".format(totalTipAmt.value)}")
 
-            }
+                        },
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+                        steps = 5,
+                        onValueChangeFinished = {
+                            Log.d("Finished", "BillForm: $tipPercentage")
+                            //This is were the calculations should happen!
+                        })
 
-            //Slider
-            Column(verticalArrangement = Arrangement.Center,
-                  horizontalAlignment = Alignment.CenterHorizontally) {
-
-                Text(text = "$tipPercentage %")
-                Spacer(modifier = Modifier.height(14.dp))
-                Slider(value = sliderPosition, onValueChange = { newVal ->
-                    sliderPosition = newVal
-                     totalTipAmt.value = calculateTotalTip(totalBill = totalBill.value.toDouble(),
-                        tipPercent = tipPercentage)
-
-                    totalPerPerson.value = calculateTotalPerPerson(
-                        totalBill = totalBill.value.toDouble(),
-                        splitBy = splitBy.value,
-                        tipPercent = tipPercentage)
-                    Log.d("Slider", "Total Bill-->: ${"%.2f".format(totalTipAmt.value)}")
-                }, modifier = Modifier.padding(start = 16.dp, end = 16.dp),
-                    steps = 5,
-                      onValueChangeFinished = {
-                          Log.d("Finished", "BillForm: $tipPercentage")
-                          //This is were the calculations should happen!
-                      })
+                }
 
             }
+
 
         }
-
-    }
-
+    }//end isValid
 
 }
 
 @Composable
-fun CustomButton(
+private fun TipSlider(
     modifier: Modifier = Modifier,
-    count: Int = 1,
-    signLabel: String = "+",
-    onClickButton: (Int) -> Unit = {},
-                ) {
+    sliderState: MutableState<Float>,
+    totalTipState: MutableState<Double>,
+    totalBillState: MutableState<String>
+                     ) {
+    val tipPercentage = (sliderState.value.toInt())
 
-    Button(onClick = {
-        if (signLabel == "-"){
+    val percentage = buildAnnotatedString {
+        withStyle(
+            style = SpanStyle(fontSize = 32.sp)
+                 ) { append(tipPercentage.toString()) }
+        append(" %")
+    }
+    //Slider
+    Column(verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally) {
 
-            onClickButton(count - 1)
-        }else {
-            onClickButton(count + 1)
-        }
+        Text(text = percentage.toString())
+        Spacer(modifier = Modifier.height(14.dp))
+        Slider(value = sliderState.value,
+            onValueChange = {
+                 sliderState.value = it
+                totalTipState.value = calculateTotalTip(
+                    totalBill = totalBillState.value.toDouble(),
+                    tipPercent = tipPercentage
+                                                       )
+                Log.d("AMT", "TipSlider: ${tipPercentage}")
 
-       // Log.d("TAG", "CustomButton: ${count}")
-    },
-        modifier = modifier
-            .width(40.dp)
-            .height(40.dp),
-          colors  = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFe9d7f7))) {
-        Text(text = signLabel,
-            style = TextStyle(fontWeight = FontWeight.ExtraBold))
+//                totalTipState.value = calculateTotalTip(tota
+//                    tipPercent = tipPercentage).roundToInt().toString()
+            },modifier = Modifier.padding(start = 16.dp, end = 16.dp),
+              steps = 5,
+            valueRange = (0f..100f))
+
 
     }
 
-}
 
 
 
-@Composable
-fun OutlinedTextField(modifier: Modifier = Modifier, label: String ="lala", onValChange: (String) -> Unit = {}) {
-    var text by remember { mutableStateOf("") }
-
-    OutlinedTextField(
-        value = text,
-        onValueChange = { onValChange(it); text = it},
-        label = { Text(label) },
-        leadingIcon = { Icon(imageVector = Icons.Default.Money , contentDescription = "lala")},
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        keyboardActions = KeyboardActions(onDone = {
-            this.defaultKeyboardAction(imeAction = ImeAction.Done)}),
 
 
-        )
+
 }
 
 @ExperimentalComposeUiApi
